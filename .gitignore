@@ -2,3 +2,4 @@
 *.zip
 secrets.json
 npm-debug.log
+!node_modules/storage-interface/*
