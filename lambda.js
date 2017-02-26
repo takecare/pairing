@@ -1,6 +1,7 @@
 'use strict';
 
 const doc = require('dynamodb-doc');
+const hmacsha1 = require('hmacsha1');
 const dynamo = new doc.DynamoDB();
 
 exports.handler = (event, context, callback) => {
