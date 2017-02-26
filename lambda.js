@@ -14,6 +14,7 @@ exports.handler = (event, context, callback) => {
             body: JSON.stringify({ error: 'keys do not match' }),
             headers: { 'Content-Type': 'application/json' }
         });
+        context.fail();
     }
 
     let requestBody = JSON.parse(event.body);
@@ -40,6 +41,10 @@ function isEventInsecure(event) {
     let key = JSON.parse(fs.readFileSync('secrets.json', 'utf8')).webhook;
     let computedHash = hmacsha1(key, requestBody);
     let receivedHash = event.headers['X-Hub-Signature'].replace('sha1=','');
+
+console.log('computed='+computedHash);
+console.log('received='+receivedHash);
+
     return computedHash !== receivedHash;
 }
 
