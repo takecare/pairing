@@ -1,13 +1,18 @@
 'use strict';
 
-const doc = require('dynamodb-doc');
+const fs = require('fs');
 const hmacsha1 = require('hmacsha1');
-const dynamo = new doc.DynamoDB();
+const Storage = require('storage-interface');
+const storage = new Storage();
 
 exports.handler = (event, context, callback) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
 
     let requestBody = JSON.parse(event.body);
+
+    let key = JSON.parse(fs.readFileSync('secrets.json', 'utf8')).webhook;
+    let hash = hmacsha1(key, requestBody);
+
     let prBody = requestBody.pull_request.body;
     let author = requestBody.pull_request.user.login;
     let pairer = extractPairerFrom(prBody);
