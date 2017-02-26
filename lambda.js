@@ -6,47 +6,50 @@ const dynamo = new doc.DynamoDB();
 exports.handler = (event, context, callback) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
 
-    // TODO transform from webhook into event
-    let prBody = event.pull_request.body;
-    let author = 
-    let pairer = extractPairedWithFrom(prBody);
+    let requestBody = JSON.parse(event.body);
+    let prBody = requestBody.pull_request.body;
+    let author = requestBody.pull_request.user.login;
+    let pairer = extractPairerFrom(prBody);
 
-    //if 
+    if (pairer) {
+        console.log('> inserting...');
+        insert(author, pairer, requestBody, callback);
+    } else {
+        console.log('> no pairer found!');
+        callback(null, { 
+            statusCode: 205, 
+            body: JSON.stringify({ message: 'no pairer found' }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 
-    handleEvent(event);    
 };
 
-function extractPairedWithFrom(prBody) {
+function extractPairerFrom(prBody) {
     let exp = /Pair[\w ]*\n+\@(\w+)/;
     let result = exp.exec(prBody);
-    return result.length > 2 ? result[1] : null;
+    return result ? (result.length > 2 ? result[1] : null) : null;
 }
 
-function done(err, res, callback) {
-    callback(null, {
+function insert(author, pairer, event, callback) {
+
+    const done = (err, res) => callback(null, {
         statusCode: err ? '400' : '200',
         body: err ? err.message : JSON.stringify(res),
         headers: {
             'Content-Type': 'application/json',
         },
     });
-}
 
-function handleEvent(event) {
-    switch (event.httpMethod) {
-        case 'DELETE':
-            dynamo.deleteItem(JSON.parse(event.body), done);
-            break;
-        case 'GET':
-            dynamo.scan({ TableName: event.queryStringParameters.TableName }, done);
-            break;
-        case 'POST':
-            dynamo.putItem(JSON.parse(event.body), done);
-            break;
-        case 'PUT':
-            dynamo.updateItem(JSON.parse(event.body), done);
-            break;
-        default:
-            done(new Error(`Unsupported method "${event.httpMethod}"`));
-    }
+    let record = {
+        TableName: 'pairs',
+        Item: {
+            number: event.pull_request.number,
+            author: author,
+            pairer: pairer,
+            event: JSON.stringify(event)
+        }
+    };
+
+    dynamo.putItem(record, done);
 }
