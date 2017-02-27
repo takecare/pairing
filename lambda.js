@@ -1,7 +1,7 @@
 'use strict';
 
 const fs = require('fs');
-const hmacsha1 = require('hmacsha1');
+const crypto = require('crypto');
 const Storage = require('storage-interface');
 const storage = new Storage();
 
@@ -37,14 +37,10 @@ exports.handler = (event, context, callback) => {
 };
 
 function isEventInsecure(event) {
-    let requestBody = JSON.parse(event.body);
     let key = JSON.parse(fs.readFileSync('secrets.json', 'utf8')).webhook;
-    let computedHash = hmacsha1(key, requestBody);
+    var hmac = crypto.createHmac('sha1', key.toString('hex'));
+    let computedHash = hmac.update(event.body).digest('hex');
     let receivedHash = event.headers['X-Hub-Signature'].replace('sha1=','');
-
-console.log('computed='+computedHash);
-console.log('received='+receivedHash);
-
     return computedHash !== receivedHash;
 }
 
