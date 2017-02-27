@@ -4,7 +4,7 @@
   "description": "github webhook pull request opened handler",
   "main": "lambda.js",
   "dependencies": {
-    "hmacsha1": "^1.0.0"
+    "dynamodb-data-types": "^3.0.0"
   },
   "devDependencies": {
     "node-lambda": "0.8.13"
