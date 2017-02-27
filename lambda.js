@@ -1,10 +1,21 @@
 'use strict';
 
-const doc = require('dynamodb-doc');
-const dynamo = new doc.DynamoDB();
+const fs = require('fs');
+const crypto = require('crypto');
+const Storage = require('storage-interface');
+const storage = new Storage();
 
 exports.handler = (event, context, callback) => {
-    console.log('Received event:', JSON.stringify(event, null, 2));
+    //console.log('Received event:', JSON.stringify(event, null, 2));
+
+    if (isEventInsecure(event)) {
+        callback(null, {
+            statusCode: 403,
+            body: JSON.stringify({ error: 'keys do not match' }),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        context.fail();
+    }
 
     let requestBody = JSON.parse(event.body);
     let prBody = requestBody.pull_request.body;
@@ -25,10 +36,18 @@ exports.handler = (event, context, callback) => {
 
 };
 
+function isEventInsecure(event) {
+    let key = JSON.parse(fs.readFileSync('secrets.json', 'utf8')).webhook;
+    var hmac = crypto.createHmac('sha1', key.toString('hex'));
+    let computedHash = hmac.update(event.body).digest('hex');
+    let receivedHash = event.headers['X-Hub-Signature'].replace('sha1=','');
+    return computedHash !== receivedHash;
+}
+
 function extractPairerFrom(prBody) {
-    let exp = /Pair[\w ]*\n+\@(\w+)/;
+    let exp = /Pair[\w\v\s\\r\\n]*\@(\w+)/;
     let result = exp.exec(prBody);
-    return result ? (result.length > 2 ? result[1] : null) : null;
+    return result ? (result.length > 1 ? result[1] : null) : null;
 }
 
 function insert(author, pairer, event, callback) {
@@ -51,5 +70,5 @@ function insert(author, pairer, event, callback) {
         }
     };
 
-    dynamo.putItem(record, done);
+    storage.putItem(record, done);
 }
