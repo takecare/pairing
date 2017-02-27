@@ -47,7 +47,7 @@ function isEventInsecure(event) {
 function extractPairerFrom(prBody) {
     let exp = /Pair[\w ]*\n+\@(\w+)/;
     let result = exp.exec(prBody);
-    return result ? (result.length > 2 ? result[1] : null) : null;
+    return result ? (result.length > 1 ? result[1] : null) : null;
 }
 
 function insert(author, pairer, event, callback) {
