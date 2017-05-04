@@ -2,6 +2,8 @@
 
 const fs = require('fs');
 const crypto = require('crypto');
+const attr = require('dynamodb-data-types').AttributeValue;
+
 const Storage = require('storage-interface');
 const storage = new Storage();
 
@@ -24,7 +26,8 @@ exports.handler = (event, context, callback) => {
 
     if (pairer) {
         console.log('> inserting...');
-        insert(author, pairer, requestBody, callback);
+        const replaced = JSON.parse(JSON.stringify(requestBody).replace(/""|''/gi, null));
+        insert(replaced, callback);
     } else {
         console.log('> no pairer found!');
         callback(null, { 
@@ -38,7 +41,7 @@ exports.handler = (event, context, callback) => {
 
 function isEventInsecure(event) {
     let key = JSON.parse(fs.readFileSync('secrets.json', 'utf8')).webhook;
-    var hmac = crypto.createHmac('sha1', key.toString('hex'));
+    let hmac = crypto.createHmac('sha1', key.toString('hex'));
     let computedHash = hmac.update(event.body).digest('hex');
     let receivedHash = event.headers['X-Hub-Signature'].replace('sha1=','');
     return computedHash !== receivedHash;
@@ -50,24 +53,22 @@ function extractPairerFrom(prBody) {
     return result ? (result.length > 1 ? result[1] : null) : null;
 }
 
-function insert(author, pairer, event, callback) {
+function insert(body, callback) {
 
-    const done = (err, res) => callback(null, {
-        statusCode: err ? '400' : '200',
-        body: err ? err.message : JSON.stringify(res),
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
+    const done = (err, res) => {
+        console.log(err ? err : res);
+        callback(null, {
+            statusCode: err ? '400' : '200',
+            body: err ? err.message : JSON.stringify(res),
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+    };
 
     let record = {
-        TableName: 'pairs',
-        Item: {
-            number: event.pull_request.number,
-            author: author,
-            pairer: pairer,
-            event: JSON.stringify(event)
-        }
+        TableName: 'playground',
+        Item: body
     };
 
     storage.putItem(record, done);
